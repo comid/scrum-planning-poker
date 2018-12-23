@@ -30,6 +30,15 @@ export class Scrum {
     this.handleTimer(user, userRoom);
   }
 
+  public async selectCard(user: User, card: number): Promise<void> {
+    if (!this.currentStory) return;
+    const score = this.currentStory.scores.find(s => s.user.id === user.id);
+    score.card = card;
+    score.timer = this.currentStory.timer;
+    await getManager().save(Score, score);
+    this.calculator();
+  }
+
   private async handleTimer(user: User, userRoom: UserRoom): Promise<void> {
     if (this.room.userRooms.every(r => r.isLeft)) {
       if (this.currentStory) {
@@ -53,7 +62,7 @@ export class Scrum {
     }
   }
 
-  private async startNextStory(users: User[]) {
+  private async startNextStory(users: User[]): Promise<void> {
     this.currentScore = null;
     this.currentStory = this.room.stories.find(s => !s.isDeleted && !s.isCompleted);
     this.selectedCard = null;
@@ -99,9 +108,9 @@ export class Scrum {
     return userRoom;
   }
 
-  private async createScore(user: User) {
+  private async createScore(user: User): Promise<Score> {
     let score = this.currentStory.scores.find(s => s.user.id === user.id);
-    if (!!score) {
+    if (!score) {
       score = new Score();
       score.user = user;
       score.story = this.currentStory;
@@ -113,7 +122,7 @@ export class Scrum {
     return score;
   }
 
-  private calculator() {
+  private calculator(): void {
     const { calcMethod } = this.room.options;
     if (this.currentStory) {
       if (calcMethod === 3) {
