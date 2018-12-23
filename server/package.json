@@ -10,7 +10,8 @@
     "serve": "node dist/app.js",
     "build": "npm run tslint && npm run build-ts",
     "start": "npm run serve",
-    "watch": "npm run dev"
+    "watch": "npm run dev",
+    "test": "jest --env=node --colors --coverage --detectOpenHandles tests"
   },
   "engines": {
     "node": "8.x.x",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@types/dotenv": "^4.0.3",
+    "@types/jest": "^23.3.10",
     "@types/jsonwebtoken": "^7.2.8",
     "@types/koa": "2.0.39",
     "@types/koa-bodyparser": "^5.0.1",
@@ -48,7 +50,9 @@
     "@types/node": "^10.11.3",
     "@types/shelljs": "^0.8.0",
     "@types/socket.io": "^1.4.38",
+    "jest": "^23.6.0",
     "nodemon": "^1.18.4",
+    "ts-jest": "^23.10.5",
     "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
     "tslint-config-airbnb": "^5.11.0",
