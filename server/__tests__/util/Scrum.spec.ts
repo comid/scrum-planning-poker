@@ -7,6 +7,7 @@ import {
   User,
   UserRoom,
 } from '../../src/entity';
+import { CalcMethod } from '../../src/model';
 import { Scrum } from '../../src/util';
 
 describe('Scrum', () => {
@@ -43,13 +44,13 @@ describe('Scrum', () => {
       room.options = {
         needScore: true,
         isNoymous: false,
-        calcMethod: 1,
+        calcMethod: CalcMethod.ArithmeticMean,
       };
       room.creator = host;
       room.updater = host;
       await transactionalEntityManager.insert(Room, room);
 
-      for (let i = 0; i < 10; i += 1) {
+      for (let i = 0; i < 2; i += 1) {
         const story = new Story();
         story.name = `Test Story ${i + 1}`;
         story.room = room;
@@ -92,12 +93,60 @@ describe('Scrum', () => {
   });
 
   it('select card', async () => {
-    const card = 1;
     await scrum.join(host);
-    await scrum.selectCard(host, card);
     const score = scrum.currentStory.scores.find(s => s.user.id === host.id);
     expect(score).not.toBeNull();
-    expect(score.card).toBe(card);
+
+    await scrum.selectCard(host, 1);
+    expect(score.card).toBe(1);
+    expect(scrum.currentScore).toBe(2);
+
+    await scrum.selectCard(host, 2);
+    expect(score.card).toBe(2);
+    expect(scrum.currentScore).toBe(3);
+
+    await scrum.leave(host);
+  });
+
+  it('change calc method', async () => {
+    await scrum.join(host);
+    await scrum.join(players[0]);
+    await scrum.join(players[1]);
+    await scrum.join(players[2]);
+
+    await scrum.selectCard(host, 1);
+    await scrum.selectCard(players[0], 2);
+    await scrum.selectCard(players[1], 10);
+
+    await scrum.calcMethod(CalcMethod.ArithmeticMean);
+    expect(scrum.room.options.calcMethod).toBe(CalcMethod.ArithmeticMean);
+    expect(scrum.currentScore).toBe(5);
+
+    await scrum.calcMethod(CalcMethod.TruncatedMean);
+    expect(scrum.room.options.calcMethod).toBe(CalcMethod.TruncatedMean);
+    expect(scrum.currentScore).toBe(3);
+
+    await scrum.calcMethod(CalcMethod.Median);
+    expect(scrum.room.options.calcMethod).toBe(CalcMethod.Median);
+    expect(scrum.currentScore).toBe(3);
+    await scrum.selectCard(players[2], 4);
+    expect(scrum.currentScore).toBe(4);
+
+    await scrum.calcMethod(CalcMethod.Customized);
+    expect(scrum.room.options.calcMethod).toBe(CalcMethod.Customized);
+    expect(scrum.currentScore).toBe(4);
+
+    await scrum.leave(host);
+    await scrum.leave(players[0]);
+    await scrum.leave(players[1]);
+    await scrum.leave(players[2]);
+  });
+
+  it('time changes', async () => {
+    await scrum.join(host);
+    const { timer } = scrum.currentStory;
+    await new Promise(resolve => setTimeout(resolve, 1050));
+    expect(scrum.currentStory.timer).toBe(timer + 1);
     await scrum.leave(host);
   });
 

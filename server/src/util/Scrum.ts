@@ -1,5 +1,6 @@
 import { getManager } from 'typeorm';
 import { Room, Story, User, UserRoom, Score } from '../entity';
+import { CalcMethod } from '../model';
 
 export class Scrum {
 
@@ -39,6 +40,12 @@ export class Scrum {
     this.calculator();
   }
 
+  public async calcMethod(calcMethod: CalcMethod): Promise<void> {
+    this.room.options.calcMethod = calcMethod;
+    await getManager().save(Room, this.room);
+    this.calculator();
+  }
+
   private async handleTimer(user: User, userRoom: UserRoom): Promise<void> {
     if (this.room.userRooms.every(r => r.isLeft)) {
       if (this.currentStory) {
@@ -47,8 +54,11 @@ export class Scrum {
 
       if (this.timer) {
         clearInterval(this.timer);
+        this.timer = null;
       }
 
+      this.currentStory = null;
+      this.currentScore = null;
       // TODO: try to destory this
     } else {
       const needScore = this.room.options.needScore || userRoom.isHost;
@@ -84,6 +94,7 @@ export class Scrum {
       this.room.isCompleted = true;
       if (this.timer) {
         clearInterval(this.timer);
+        this.timer = null;
       }
     }
   }
