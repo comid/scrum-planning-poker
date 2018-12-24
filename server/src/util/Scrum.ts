@@ -46,6 +46,20 @@ export class Scrum {
     this.calculator();
   }
 
+  public async nextStory(): Promise<void> {
+    if (this.currentStory) {
+      this.currentStory.score = Scrum.initResults[this.currentScore];
+      this.currentStory.isCompleted = true;
+      await getManager().save(Story, this.currentStory);
+    }
+
+    const users = this.room.userRooms
+      .filter(ur => !ur.isLeft && (!ur.isHost || this.room.options.needScore))
+      .map(ur => ur.user);
+
+    await this.startNextStory(users);
+  }
+
   private async handleTimer(user: User, userRoom: UserRoom): Promise<void> {
     if (this.room.userRooms.every(r => r.isLeft)) {
       if (this.currentStory) {
@@ -61,7 +75,7 @@ export class Scrum {
       this.currentScore = null;
       // TODO: try to destory this
     } else {
-      const needScore = this.room.options.needScore || userRoom.isHost;
+      const needScore = this.room.options.needScore || !userRoom.isHost;
       if (this.currentStory) {
         if (needScore) {
           await this.createScore(user);
@@ -135,51 +149,49 @@ export class Scrum {
 
   private calculator(): void {
     const { calcMethod } = this.room.options;
-    if (this.currentStory) {
-      if (calcMethod === 3) {
-        return;
-      }
-
-      const scores = this.currentStory.scores
-        .map(s => s.card)
-        .filter(s => s !== null && s >= 0)
-        .sort((a, b) => a - b);
-
-      if (scores.length === 0) {
-        this.currentScore = null;
-        return;
-      }
-
-      if (scores.length > 2 && calcMethod === 1) {
-        scores.pop();
-        scores.splice(0, 1);
-      }
-
-      const { length } = scores;
-      let result: number;
-      if (calcMethod === 0) {
-        result = scores.reduce((v, s) => v + s, 0) / length;
-      } else {
-        result = length % 2 === 0 ?
-          Math.round((scores[length / 2] + scores[length / 2 - 1]) / 2) : scores[(length - 1) / 2];
-      }
-
-      this.currentScore = Scrum.initResults.map((value, index) => ({
-        value,
-        index,
-        abs: Math.abs(value - result),
-      })).sort((i, j) => {
-        if (i.abs > j.abs) {
-          return 1;
-        }
-
-        if (i.abs < j.abs) {
-          return -1;
-        }
-
-        return j.value - i.value;
-      })[0].index;
+    if (calcMethod === 3) {
+      return;
     }
+
+    const scores = this.currentStory.scores
+      .map(s => s.card)
+      .filter(s => s !== null && s >= 0)
+      .sort((a, b) => a - b);
+
+    if (scores.length === 0) {
+      this.currentScore = null;
+      return;
+    }
+
+    if (scores.length > 2 && calcMethod === 1) {
+      scores.pop();
+      scores.splice(0, 1);
+    }
+
+    const { length } = scores;
+    let result: number;
+    if (calcMethod === 0) {
+      result = scores.reduce((v, s) => v + s, 0) / length;
+    } else {
+      result = length % 2 === 0 ?
+        Math.round((scores[length / 2] + scores[length / 2 - 1]) / 2) : scores[(length - 1) / 2];
+    }
+
+    this.currentScore = Scrum.initResults.map((value, index) => ({
+      value,
+      index,
+      abs: Math.abs(value - result),
+    })).sort((i, j) => {
+      if (i.abs > j.abs) {
+        return 1;
+      }
+
+      if (i.abs < j.abs) {
+        return -1;
+      }
+
+      return j.value - i.value;
+    })[0].index;
   }
 
 }

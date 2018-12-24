@@ -150,6 +150,83 @@ describe('Scrum', () => {
     await scrum.leave(host);
   });
 
+  it('next story', async () => {
+    await scrum.join(host);
+    while (scrum.currentStory) {
+      const { currentStory } = scrum;
+      await scrum.nextStory();
+      expect(currentStory.isCompleted).toBeTruthy();
+    }
+    expect(scrum.room.isCompleted).toBeTruthy();
+    await scrum.selectCard(host, 1);
+    await scrum.nextStory();
+    await scrum.leave(host);
+  });
+
+  it('host not score', async () => {
+    let room2: Room;
+
+    await getManager().transaction(async (transactionalEntityManager) => {
+      room2 = new Room();
+      room2.name = 'Test Room 2';
+      room2.options = {
+        needScore: false,
+        isNoymous: false,
+        calcMethod: CalcMethod.ArithmeticMean,
+      };
+      room2.creator = host;
+      room2.updater = host;
+      await transactionalEntityManager.insert(Room, room2);
+
+      for (let i = 0; i < 2; i += 1) {
+        const story = new Story();
+        story.name = `Test Story ${i + 1}`;
+        story.room = room2;
+        story.creator = host;
+        story.updater = host;
+        await transactionalEntityManager.insert(Story, story);
+      }
+    });
+
+    room2 = await getManager().findOneOrFail(Room, {
+      relations: [
+        'userRooms',
+        'userRooms.user',
+        'stories',
+        'stories.scores',
+        'stories.scores.user',
+        'creator',
+        'updater',
+      ],
+      where: {
+        id: room2.id,
+      },
+    });
+
+    const scrum2 = new Scrum(room2);
+    await scrum2.join(players[0]);
+    await scrum2.join(host);
+
+    await scrum2.leave(players[0]);
+    await scrum2.leave(host);
+
+    await scrum2.join(host);
+    await scrum2.join(players[0]);
+
+    while (scrum2.currentStory) {
+      const { currentStory } = scrum2;
+      await scrum2.nextStory();
+      expect(currentStory.isCompleted).toBeTruthy();
+    }
+    expect(scrum2.room.isCompleted).toBeTruthy();
+
+    await scrum2.leave(players[0]);
+    await scrum2.leave(host);
+
+    room2.isDeleted = true;
+    await getManager().save(Room, room2);
+  });
+
   afterAll(async () => {
     room.isDeleted = true;
     await getManager().save(Room, room);
