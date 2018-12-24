@@ -46,16 +46,16 @@ describe('Scrum', () => {
         isNoymous: false,
         calcMethod: CalcMethod.ArithmeticMean,
       };
-      room.creator = host;
-      room.updater = host;
+      room.creatorId = host.id;
+      room.updaterId = host.id;
       await transactionalEntityManager.insert(Room, room);
 
       for (let i = 0; i < 2; i += 1) {
         const story = new Story();
         story.name = `Test Story ${i + 1}`;
-        story.room = room;
-        story.creator = host;
-        story.updater = host;
+        story.roomId = room.id;
+        story.creatorId = host.id;
+        story.updaterId = host.id;
         await transactionalEntityManager.insert(Story, story);
       }
     });
@@ -66,21 +66,21 @@ describe('Scrum', () => {
 
   it('host join room', async () => {
     await scrum.join(host);
-    const userRoom = scrum.room.userRooms.find(us => us.user.id === host.id);
+    const userRoom = scrum.room.userRooms.find(us => us.userId === host.id);
     expect(userRoom).not.toBeNull();
     expect(userRoom.isLeft).toBeFalsy();
   });
 
   it('host leave room', async () => {
     await scrum.leave(host);
-    const userRoom = scrum.room.userRooms.find(us => us.user.id === host.id);
+    const userRoom = scrum.room.userRooms.find(us => us.userId === host.id);
     expect(userRoom).not.toBeNull();
     expect(userRoom.isLeft).toBeTruthy();
   });
 
   it('select card', async () => {
     await scrum.join(host);
-    const score = scrum.currentStory.scores.find(s => s.user.id === host.id);
+    const score = scrum.currentStory.scores.find(s => s.userId === host.id);
     expect(score).not.toBeNull();
 
     await scrum.selectCard(host, 1);
@@ -151,7 +151,7 @@ describe('Scrum', () => {
       await scrum.nextStory();
       expect(currentStory.isCompleted).toBeTruthy();
     }
-    expect(scrum.room.isCompleted).toBeTruthy();
+    expect(scrum.currentStory).toBeUndefined();
     await scrum.selectCard(host, 1);
     await scrum.nextStory();
     await scrum.leave(host);
@@ -163,7 +163,7 @@ describe('Scrum', () => {
       await scrum.nextStory();
     }
     await scrum.addStories(['Add Story 1'], host);
-    expect(scrum.room.isCompleted).toBeFalsy();
+    expect(scrum.currentStory).toBeDefined();
     expect(scrum.currentStory.name).toBe('Add Story 1');
 
     await scrum.addStories(['Add Story 2'], host);
@@ -227,7 +227,7 @@ describe('Scrum', () => {
       await scrum2.nextStory();
       expect(currentStory.isCompleted).toBeTruthy();
     }
-    expect(scrum2.room.isCompleted).toBeTruthy();
+    expect(scrum2.currentStory).toBeUndefined();
 
     await scrum2.leave(players[0]);
     await scrum2.leave(host);

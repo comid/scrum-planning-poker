@@ -14,12 +14,8 @@ export class Scrum {
     return await getManager().findOneOrFail(Room, {
       relations: [
         'userRooms',
-        'userRooms.user',
         'stories',
         'stories.scores',
-        'stories.scores.user',
-        'creator',
-        'updater',
       ],
       where: {
         id,
@@ -29,11 +25,14 @@ export class Scrum {
 
   private timer?: NodeJS.Timer;
 
+  public room: Room = null;
+
   public currentStory: Story = null;
 
   public currentScore: number = null;
 
-  constructor(public room: Room) {
+  constructor(room: Room) {
+    this.room = room;
   }
 
   public async join(user: User): Promise<void> {
@@ -48,7 +47,7 @@ export class Scrum {
 
   public async selectCard(user: User, card: number): Promise<void> {
     if (!this.currentStory) return;
-    const score = this.currentStory.scores.find(s => s.user.id === user.id);
+    const score = this.currentStory.scores.find(s => s.userId === user.id);
     score.card = card;
     score.timer = this.currentStory.timer;
     await getManager().save(Score, score);
@@ -68,11 +67,11 @@ export class Scrum {
       await getManager().save(Story, this.currentStory);
     }
 
-    const users = this.room.userRooms
+    const userIds = this.room.userRooms
       .filter(ur => !ur.isLeft && (!ur.isHost || this.room.options.needScore))
-      .map(ur => ur.user);
+      .map(ur => ur.userId);
 
-    await this.startNextStory(users);
+    await this.startNextStory(userIds);
   }
 
   public async changeCurrentScore(currentScore: number): Promise<void> {
@@ -86,17 +85,16 @@ export class Scrum {
       for (let i = 0; i < stories.length; i += 1) {
         const story = new Story();
         story.name = stories[i];
-        story.room = this.room;
-        story.creator = user;
-        story.updater = user;
+        story.roomId = this.room.id;
+        story.creatorId = user.id;
+        story.updaterId = user.id;
         await transactionalEntityManager.insert(Story, story);
-        delete story.room;
         story.scores = [];
         this.room.stories.push(story);
       }
     });
 
-    if (this.room.isCompleted) {
+    if (!this.currentStory) {
       await this.nextStory();
     }
   }
@@ -119,19 +117,18 @@ export class Scrum {
       const needScore = this.room.options.needScore || !userRoom.isHost;
       if (this.currentStory) {
         if (needScore) {
-          await this.createScore(user);
+          await this.createScore(user.id);
         }
       } else {
-        await this.startNextStory(needScore ? [user] : []);
+        await this.startNextStory(needScore ? [user.id] : []);
       }
     }
   }
 
-  private async startNextStory(users: User[]): Promise<void> {
+  private async startNextStory(userIds: number[]): Promise<void> {
     this.currentScore = null;
     this.currentStory = this.room.stories.find(s => !s.isDeleted && !s.isCompleted);
     if (this.currentStory) {
-      this.room.isCompleted = false;
       if (!this.timer) {
         this.timer = setInterval(
           () => this.currentStory.timer += 1,
@@ -139,13 +136,12 @@ export class Scrum {
         );
       }
 
-      for (let i = 0; i < users.length; i += 1) {
-        await this.createScore(users[i]);
+      for (let i = 0; i < userIds.length; i += 1) {
+        await this.createScore(userIds[i]);
       }
 
       this.calculator();
     } else {
-      this.room.isCompleted = true;
       if (this.timer) {
         clearInterval(this.timer);
         this.timer = null;
@@ -154,33 +150,31 @@ export class Scrum {
   }
 
   private async createUserRoom(user: User, isLeft: boolean): Promise<UserRoom> {
-    let userRoom = this.room.userRooms.find(ur => ur.user.id === user.id);
+    let userRoom = this.room.userRooms.find(ur => ur.userId === user.id);
     const exist = !!userRoom;
     if (!exist) {
       userRoom = new UserRoom();
-      userRoom.user = user;
-      userRoom.room = this.room;
-      userRoom.isHost = this.room.creator.id === user.id;
+      userRoom.userId = user.id;
+      userRoom.roomId = this.room.id;
+      userRoom.isHost = this.room.creatorId === user.id;
     }
 
     userRoom.isLeft = isLeft;
     await getManager().save(UserRoom, userRoom);
     if (!exist) {
-      delete userRoom.room;
       this.room.userRooms.push(userRoom);
     }
 
     return userRoom;
   }
 
-  private async createScore(user: User): Promise<Score> {
-    let score = this.currentStory.scores.find(s => s.user.id === user.id);
+  private async createScore(userId: number): Promise<Score> {
+    let score = this.currentStory.scores.find(s => s.userId === userId);
     if (!score) {
       score = new Score();
-      score.user = user;
-      score.story = this.currentStory;
+      score.userId = userId;
+      score.storyId = this.currentStory.id;
       await getManager().save(Score, score);
-      delete score.story;
       this.currentStory.scores.push(score);
     }
 
