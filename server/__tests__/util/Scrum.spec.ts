@@ -60,21 +60,7 @@ describe('Scrum', () => {
       }
     });
 
-    room = await getManager().findOneOrFail(Room, {
-      relations: [
-        'userRooms',
-        'userRooms.user',
-        'stories',
-        'stories.scores',
-        'stories.scores.user',
-        'creator',
-        'updater',
-      ],
-      where: {
-        id: room.id,
-      },
-    });
-
+    room = await Scrum.getRoom(room.id);
     scrum = new Scrum(room);
   });
 
@@ -105,6 +91,14 @@ describe('Scrum', () => {
     expect(score.card).toBe(2);
     expect(scrum.currentScore).toBe(3);
 
+    await scrum.leave(host);
+  });
+
+  it('change current score', async () => {
+    await scrum.join(host);
+    await scrum.changeCurrentScore(1);
+    expect(scrum.currentScore).toBe(1);
+    expect(scrum.room.options.calcMethod).toBe(CalcMethod.Customized);
     await scrum.leave(host);
   });
 
@@ -160,6 +154,21 @@ describe('Scrum', () => {
     expect(scrum.room.isCompleted).toBeTruthy();
     await scrum.selectCard(host, 1);
     await scrum.nextStory();
+    await scrum.leave(host);
+  });
+
+  it('add stories', async () => {
+    await scrum.join(host);
+    while (scrum.currentStory) {
+      await scrum.nextStory();
+    }
+    await scrum.addStories(['Add Story 1'], host);
+    expect(scrum.room.isCompleted).toBeFalsy();
+    expect(scrum.currentStory.name).toBe('Add Story 1');
+
+    await scrum.addStories(['Add Story 2'], host);
+    expect(scrum.currentStory.name).toBe('Add Story 1');
+
     await scrum.leave(host);
   });
 

@@ -4,19 +4,34 @@ import { CalcMethod } from '../model';
 
 export class Scrum {
 
-  private timer?: NodeJS.Timer;
-
   public static readonly initResults = Array(31)
     .fill(null)
     .map((v, i) => i)
     .concat([0.5, 40, 55, 89, 100])
     .sort((i, j) => i - j);
 
+  public static async getRoom(id: number): Promise<Room> {
+    return await getManager().findOneOrFail(Room, {
+      relations: [
+        'userRooms',
+        'userRooms.user',
+        'stories',
+        'stories.scores',
+        'stories.scores.user',
+        'creator',
+        'updater',
+      ],
+      where: {
+        id,
+      },
+    });
+  }
+
+  private timer?: NodeJS.Timer;
+
   public currentStory: Story = null;
 
   public currentScore: number = null;
-
-  public selectedCard: number = null;
 
   constructor(public room: Room) {
   }
@@ -60,6 +75,32 @@ export class Scrum {
     await this.startNextStory(users);
   }
 
+  public async changeCurrentScore(currentScore: number): Promise<void> {
+    this.room.options.calcMethod = CalcMethod.Customized;
+    this.currentScore = currentScore;
+    await getManager().save(Room, this.room);
+  }
+
+  public async addStories(stories: string[], user: User): Promise<void> {
+    await getManager().transaction(async (transactionalEntityManager) => {
+      for (let i = 0; i < stories.length; i += 1) {
+        const story = new Story();
+        story.name = stories[i];
+        story.room = this.room;
+        story.creator = user;
+        story.updater = user;
+        await transactionalEntityManager.insert(Story, story);
+        delete story.room;
+        story.scores = [];
+        this.room.stories.push(story);
+      }
+    });
+
+    if (this.room.isCompleted) {
+      await this.nextStory();
+    }
+  }
+
   private async handleTimer(user: User, userRoom: UserRoom): Promise<void> {
     if (this.room.userRooms.every(r => r.isLeft)) {
       if (this.currentStory) {
@@ -89,7 +130,6 @@ export class Scrum {
   private async startNextStory(users: User[]): Promise<void> {
     this.currentScore = null;
     this.currentStory = this.room.stories.find(s => !s.isDeleted && !s.isCompleted);
-    this.selectedCard = null;
     if (this.currentStory) {
       this.room.isCompleted = false;
       if (!this.timer) {
