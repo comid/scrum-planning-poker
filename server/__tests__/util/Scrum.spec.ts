@@ -80,6 +80,19 @@ describe('Scrum', () => {
     expect(userRoom.isLeft).toBeTruthy();
   });
 
+  it('on destory', async () => {
+    await scrum.join(host);
+    await scrum.leave(host);
+    const times = onDestory.mock.calls.length;
+
+    await scrum.join(host);
+    await scrum.join(players[0]);
+    await scrum.leave(host);
+    expect(onDestory).toBeCalledTimes(times);
+    await scrum.leave(players[0]);
+    expect(onDestory).toBeCalledTimes(times + 1);
+  });
+
   it('select card', async () => {
     await scrum.join(host);
     const score = scrum.currentStory.scores.find(s => s.userId === host.id);
