@@ -25,24 +25,27 @@ export class Scrum {
 
   private timer?: NodeJS.Timer;
 
-  public room: Room = null;
+  private onDestory?: (scrum?: Scrum) => void;
+
+  public room: Room;
 
   public currentStory: Story = null;
 
   public currentScore: number = null;
 
-  constructor(room: Room) {
+  constructor(room: Room, onDestory?: (scrum?: Scrum) => void) {
     this.room = room;
+    this.onDestory = onDestory;
   }
 
   public async join(user: User): Promise<void> {
     const userRoom = await this.createUserRoom(user, false);
-    this.handleTimer(user, userRoom);
+    await this.handleTimer(user, userRoom);
   }
 
   public async leave(user: User): Promise<void> {
     const userRoom = await this.createUserRoom(user, true);
-    this.handleTimer(user, userRoom);
+    await this.handleTimer(user, userRoom);
   }
 
   public async selectCard(user: User, card: number): Promise<void> {
@@ -112,7 +115,9 @@ export class Scrum {
 
       this.currentStory = null;
       this.currentScore = null;
-      // TODO: try to destory this
+      if (this.onDestory) {
+        this.onDestory(this);
+      }
     } else {
       const needScore = this.room.options.needScore || !userRoom.isHost;
       if (this.currentStory) {

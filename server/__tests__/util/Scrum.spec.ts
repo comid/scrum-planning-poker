@@ -15,6 +15,7 @@ describe('Scrum', () => {
   let players: User[];
   let room: Room;
   let scrum: Scrum;
+  const onDestory = jest.fn();
 
   beforeAll(async () => {
     await createConnection({
@@ -61,7 +62,7 @@ describe('Scrum', () => {
     });
 
     room = await Scrum.getRoom(room.id);
-    scrum = new Scrum(room);
+    scrum = new Scrum(room, onDestory);
   });
 
   it('host join room', async () => {
@@ -73,6 +74,7 @@ describe('Scrum', () => {
 
   it('host leave room', async () => {
     await scrum.leave(host);
+    expect(onDestory).toBeCalled();
     const userRoom = scrum.room.userRooms.find(us => us.userId === host.id);
     expect(userRoom).not.toBeNull();
     expect(userRoom.isLeft).toBeTruthy();
