@@ -1,6 +1,6 @@
 Scrum敏捷估算
 =====================
-Scrum扑克让敏捷项目估算更加精确简单并充满乐趣
+Scrum扑克让敏捷项目估算更加精确简单并充满乐趣！
 
 扫码体验
 ---------------------
@@ -17,7 +17,7 @@ Scrum扑克让敏捷项目估算更加精确简单并充满乐趣
 
 如有任何意见或建议请加
 ----------------
-微信:darrick
+微信: darrick
 
 友情赞助
 --------------
@@ -25,7 +25,11 @@ Scrum扑克让敏捷项目估算更加精确简单并充满乐趣
 
 Scrum-Planning-Poker
 =======================
-Scrum Planning is a WeChat mini program, which aims to make project planning and estimation more accurate, simple and effortless. In the future, it's designed to become a skill maturity management platform to analyze personal skills and provide advice for personalized learning path.
+Scrum Planning Poker makes agile project planning and estimation more accurate, simple, and fun.
+
+Brief
+------
+Scrum Planning Poker is a WeChat mini program, which aims to make project planning and estimation more accurate, simple and effortless. In the future, it's designed to become a skill maturity management platform to analyze personal skills and provide advice for personalized learning path.
 
 Have a Try
 --------
