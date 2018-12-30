@@ -30,4 +30,5 @@ Scrum Planning is a WeChat mini program, which aims to make project planning and
 Have a Try
 --------
 Open Wechat and scan the Mini Program code below:
+
 ![image](https://github.com/yociduo/scrum-planning-poker/blob/develop/img/minipcode_258.jpg)
