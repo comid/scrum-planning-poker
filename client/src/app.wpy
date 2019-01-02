@@ -8,6 +8,7 @@ import wepy from 'wepy';
 import 'wepy-async-function';
 import { setStore } from 'wepy-redux';
 import configStore from './store';
+import io from '@/vendors/socket.io-mp-client/socket.io-mp';
 import { defaultLang, LANG_KEY, TOKEN_KEY } from '@/utils/utils';
 import T from '@/utils/i18n';
 import locales from '@/utils/locales';
@@ -45,7 +46,8 @@ export default class extends wepy.app {
   globalData = {
     userInfo: null,
     token: null,
-    lang: defaultLang
+    lang: defaultLang,
+    socket: null
   };
 
   constructor() {
@@ -95,13 +97,24 @@ export default class extends wepy.app {
   onLaunch() {
     this.registerLocales();
     this.globalData.token = wepy.getStorageSync(TOKEN_KEY);
+    this.initSocket();
     setTimeout(() => {
       this.checkForUpdates();
     }, 1000);
   }
 
   onShow() {
+    if (this.globalData.socket) {
+      this.globalData.socket.connect();
+    }
+
     this.checkClipboard();
+  }
+
+  onHide() {
+    if (this.globalData.socket) {
+      this.globalData.socket.disconnect();
+    }
   }
 
   async login() {
@@ -146,6 +159,17 @@ export default class extends wepy.app {
     } catch (error) {
       console.error(error);
       return defaultLang;
+    }
+  }
+
+  initSocket() {
+    if (this.globalData.token) {
+      const { socketUrl, socketPath } = wepy.$appConfig;
+      this.globalData.socket = io(socketUrl, {
+        path: socketPath,
+        transparent: ['websocket'],
+        query: 'token=' + this.globalData.token
+      });
     }
   }
 
